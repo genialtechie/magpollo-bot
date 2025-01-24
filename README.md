@@ -1,50 +1,28 @@
-# Eliza
+# morty
 
-## Edit the character files
+## TODO:
 
-Open `src/character.ts` to modify the default character. Uncomment and edit.
+- [] Figure out deployment strategy
+- [] build front end to show logs and other stuff
+- [] implement crypto watchlist
+- [] add twitter character and integration
 
-### Custom characters
+## Deployment
 
-To load custom characters instead:
-- Use `pnpm start --characters="path/to/your/character.json"`
-- Multiple character files can be loaded simultaneously
+### Option 1: Railway (Recommended)
 
-### Add clients
-```
-# in character.ts
-clients: [Clients.TWITTER, Clients.DISCORD],
-
-# in character.json
-clients: ["twitter", "discord"]
-```
-
-## Duplicate the .env.example template
-
-```bash
-cp .env.example .env
-```
-
-\* Fill out the .env file with your own values.
-
-### Add login credentials and keys to .env
-```
-DISCORD_APPLICATION_ID="discord-application-id"
-DISCORD_API_TOKEN="discord-api-token"
-...
-OPENROUTER_API_KEY="sk-xx-xx-xxx"
-...
-TWITTER_USERNAME="username"
-TWITTER_PASSWORD="password"
-TWITTER_EMAIL="your@email.com"
-```
-
-## Install dependencies and start your agent
-
-```bash
-pnpm i && pnpm start
-```
-Note: this requires node to be at least version 22 when you install packages and run the agent.
+1. Create a Railway account
+2. Create a new project
+3. Add PostgreSQL plugin
+4. Configure environment variables:
+   ```
+   DISCORD_TOKEN=your_token
+   DISCORD_CLIENT_ID=your_client_id
+   OPENROUTER_API_KEY=your_key
+   DATABASE_URL=provided_by_railway
+   ```
+5. Connect your GitHub repository
+6. Deploy
 
 ## Run with Docker
 
@@ -54,9 +32,9 @@ Note: this requires node to be at least version 22 when you install packages and
 
 ```yaml
 services:
-    eliza:
-        environment:
-            - OPENROUTER_API_KEY=blahdeeblahblahblah
+  eliza:
+    environment:
+      - OPENROUTER_API_KEY=blahdeeblahblahblah
 ```
 
 #### Run the image
@@ -78,9 +56,9 @@ docker buildx build --platform linux/amd64 -t eliza-starter:v1 --load .
 
 ```yaml
 services:
-    eliza:
-        environment:
-            - OPENROUTER_API_KEY=blahdeeblahblahblah
+  eliza:
+    environment:
+      - OPENROUTER_API_KEY=blahdeeblahblahblah
 ```
 
 #### Run the image
