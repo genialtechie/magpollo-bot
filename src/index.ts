@@ -83,18 +83,42 @@ async function startAgent(character: Character, directClient: DirectClient) {
 
     const db = initializeDatabase(dataDir);
 
-    await db.init();
+    try {
+      await db.init();
+    } catch (dbError) {
+      elizaLogger.error(
+        `Database initialization failed for ${character.name}:`,
+        dbError
+      );
+      throw dbError; // Re-throw to handle in the outer catch
+    }
 
     const cache = initializeDbCache(character, db);
     const runtime = createAgent(character, db, cache, token);
 
-    await runtime.initialize();
+    try {
+      await runtime.initialize();
+    } catch (runtimeError) {
+      elizaLogger.error(
+        `Runtime initialization failed for ${character.name}:`,
+        runtimeError
+      );
+      throw runtimeError; // Re-throw to handle in the outer catch
+    }
 
-    runtime.clients = await initializeClients(character, runtime);
+    try {
+      runtime.clients = await initializeClients(character, runtime);
+    } catch (clientError) {
+      elizaLogger.error(
+        `Client initialization failed for ${character.name}:`,
+        clientError
+      );
+      throw clientError; // Re-throw to handle in the outer catch
+    }
 
     directClient.registerAgent(runtime);
 
-    // report to console
+    // Report to console
     elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
 
     return runtime;
@@ -104,7 +128,7 @@ async function startAgent(character: Character, directClient: DirectClient) {
       error
     );
     console.error(error);
-    throw error;
+    throw error; // Ensure the error is propagated to the caller
   }
 }
 
@@ -128,55 +152,96 @@ const checkPortAvailable = (port: number): Promise<boolean> => {
 };
 
 const startAgents = async () => {
-  // Initialize log server before starting agents
-  const logServer = new LogWebSocketServer(3001);
+  let logServer;
+  let directClient;
 
-  const directClient = new DirectClient();
-  let serverPort = parseInt(settings.SERVER_PORT || '3000');
-  const args = parseArguments();
-
-  let charactersArg = args.characters || args.character;
-  let characters = [character];
-
-  console.log('charactersArg', charactersArg);
-  if (charactersArg) {
-    characters = await loadCharacters(charactersArg);
-  }
-  console.log('characters', characters);
   try {
+    // Initialize log server before starting agents
+    logServer = new LogWebSocketServer(3001);
+
+    directClient = new DirectClient();
+    let serverPort = parseInt(settings.SERVER_PORT || '3000');
+    const args = parseArguments();
+
+    let charactersArg = args.characters || args.character;
+    let characters = [character];
+
+    if (charactersArg) {
+      characters = await loadCharacters(charactersArg);
+    }
+
+    // Start each agent
     for (const character of characters) {
-      await startAgent(character, directClient as DirectClient);
+      try {
+        await startAgent(character, directClient as DirectClient);
+      } catch (error) {
+        elizaLogger.error(
+          `Failed to start agent for character ${character.name}:`,
+          error
+        );
+        // Continue with other agents even if one fails
+      }
+    }
+
+    // Find available port
+    while (!(await checkPortAvailable(serverPort))) {
+      elizaLogger.warn(
+        `Port ${serverPort} is in use, trying ${serverPort + 1}`
+      );
+      serverPort++;
+    }
+
+    // Configure direct client
+    directClient.startAgent = async (character: Character) => {
+      return startAgent(character, directClient);
+    };
+
+    // Start direct client
+    try {
+      await directClient.start(serverPort);
+      if (serverPort !== parseInt(settings.SERVER_PORT || '3000')) {
+        elizaLogger.log(`Server started on alternate port ${serverPort}`);
+      }
+    } catch (error) {
+      elizaLogger.error('Failed to start direct client:', error);
+      throw error; // Critical error, should stop the process
+    }
+
+    // Start chat if not in daemon mode
+    const isDaemonProcess = process.env.DAEMON_PROCESS === 'true';
+    if (!isDaemonProcess) {
+      elizaLogger.log("Chat started. Type 'exit' to quit.");
+      const chat = startChat(characters);
+      await chat(); // Assuming chat() returns a Promise
     }
   } catch (error) {
-    elizaLogger.error('Error starting agents:', error);
-  }
-
-  while (!(await checkPortAvailable(serverPort))) {
-    elizaLogger.warn(`Port ${serverPort} is in use, trying ${serverPort + 1}`);
-    serverPort++;
-  }
-
-  // upload some agent functionality into directClient
-  directClient.startAgent = async (character: Character) => {
-    // wrap it so we don't have to inject directClient later
-    return startAgent(character, directClient);
-  };
-
-  directClient.start(serverPort);
-
-  if (serverPort !== parseInt(settings.SERVER_PORT || '3000')) {
-    elizaLogger.log(`Server started on alternate port ${serverPort}`);
-  }
-
-  const isDaemonProcess = process.env.DAEMON_PROCESS === 'true';
-  if (!isDaemonProcess) {
-    elizaLogger.log("Chat started. Type 'exit' to quit.");
-    const chat = startChat(characters);
-    chat();
+    elizaLogger.error('Critical error in startAgents:', error);
+    // Cleanup
+    if (directClient) {
+      try {
+        await directClient.stop();
+      } catch (cleanupError) {
+        elizaLogger.error('Error while stopping direct client:', cleanupError);
+      }
+    }
+    if (logServer) {
+      try {
+        await logServer.stop();
+      } catch (cleanupError) {
+        elizaLogger.error('Error while stopping log server:', cleanupError);
+      }
+    }
+    throw error; // Re-throw to trigger process exit
   }
 };
 
+// Main execution
+process.on('unhandledRejection', (error) => {
+  elizaLogger.error('Unhandled Promise Rejection:', error);
+  process.exit(1);
+});
+
 startAgents().catch((error) => {
-  elizaLogger.error('Unhandled error in startAgents:', error);
+  elizaLogger.error('Fatal error in startAgents:', error);
   process.exit(1);
 });
