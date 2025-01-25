@@ -22,6 +22,7 @@ COPY tsconfig.json ./
 # Copy the rest of the application code
 COPY ./src ./src
 COPY ./characters ./characters
+COPY ./scripts ./scripts
 COPY src/database/schema.sql ./src/database/
 
 # Install dependencies and build the project
@@ -56,6 +57,7 @@ COPY --from=builder /app/characters /app/characters
 COPY --from=builder /app/dist /app/dist
 COPY --from=builder /app/tsconfig.json /app/
 COPY --from=builder /app/pnpm-lock.yaml /app/
+COPY --from=builder /app/scripts /app/scripts
 COPY --from=builder /app/src/database/schema.sql /app/src/database/
 
 EXPOSE 3000
