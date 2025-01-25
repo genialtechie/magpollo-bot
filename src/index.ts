@@ -15,7 +15,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeDbCache } from './cache/index.ts';
 import { character } from './character.ts';
-import { startChat } from './chat/index.ts';
+// import { startChat } from './chat/index.ts';
 import { initializeClients } from './clients/index.ts';
 import {
   getTokenForProvider,
@@ -208,18 +208,18 @@ const startAgents = async () => {
     }
 
     // Start chat if not in daemon mode
-    const isDaemonProcess = process.env.DAEMON_PROCESS === 'true';
-    if (!isDaemonProcess) {
-      elizaLogger.log("Chat started. Type 'exit' to quit.");
-      const chat = startChat(characters);
-      await chat(); // Assuming chat() returns a Promise
-    }
+    // const isDaemonProcess = process.env.DAEMON_PROCESS === 'true';
+    // if (!isDaemonProcess) {
+    //   elizaLogger.log("Chat started. Type 'exit' to quit.");
+    //   const chat = startChat(characters);
+    //   await chat(); // Assuming chat() returns a Promise
+    // }
   } catch (error) {
     elizaLogger.error('Critical error in startAgents:', error);
     // Cleanup
     if (directClient) {
       try {
-        await directClient.stop();
+        directClient.stop();
       } catch (cleanupError) {
         elizaLogger.error('Error while stopping direct client:', cleanupError);
       }
