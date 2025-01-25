@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Morty Logs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              log: '#ffffff',
+              warn: '#ffff00',
+              error: '#ff0000',
+              info: '#0000ff',
+              debug: '#ff00ff',
+              success: '#00ff00',
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-gray-900 text-gray-200 font-mono">
+    <header
+      class="border-b border-gray-700 p-4 flex justify-between items-center sticky top-0 bg-gray-900"
+    >
+      <h1 class="text-xl font-bold">ElizaOS Logs</h1>
+      <div
+        id="status"
+        class="px-3 py-1 rounded-full text-sm"
+      ></div>
+    </header>
+
+    <div
+      id="logs"
+      class="p-4 h-[calc(100vh-4rem)] overflow-y-auto"
+    ></div>
+
+    <script>
+      const logsDiv = document.getElementById('logs');
+      const statusDiv = document.getElementById('status');
+
+      // Dynamic WebSocket URL based on environment
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost =
+        window.location.hostname === 'localhost'
+          ? 'localhost:3001'
+          : window.location.host;
+      const ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+
+      const LOG_ICONS = {
+        LOG: '◎', // White circle
+        WARN: '⚠', // Warning
+        ERROR: '⛔', // No entry
+        INFO: 'ℹ', // Info
+        DEBUG: 'Ⱗ', // Debug
+        SUCCESS: '✓', // Check
+      };
+
+      const LOG_COLORS = {
+        LOG: 'text-log',
+        WARN: 'text-warn',
+        ERROR: 'text-error',
+        INFO: 'text-info',
+        DEBUG: 'text-debug',
+        SUCCESS: 'text-success',
+      };
+
+      function updateStatus(connected) {
+        statusDiv.textContent = connected ? 'Connected' : 'Disconnected';
+        statusDiv.className = connected
+          ? 'px-3 py-1 rounded-full text-sm bg-green-900 text-green-300'
+          : 'px-3 py-1 rounded-full text-sm bg-red-900 text-red-300';
+      }
+
+      function addLogEntry(log) {
+        const entry = document.createElement('div');
+        entry.className = 'py-1 flex gap-2 items-start';
+
+        entry.innerHTML = `
+                <span class="text-gray-500">[${log.timestamp}]</span>
+                <span class="${LOG_COLORS[log.level] || 'text-white'}">${
+          LOG_ICONS[log.level] || ''
+        } ${log.level}:</span>
+                <span class="text-gray-300 whitespace-pre-wrap">${
+                  log.message
+                }</span>
+            `;
+
+        logsDiv.appendChild(entry);
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+
+        while (logsDiv.children.length > 1000) {
+          logsDiv.removeChild(logsDiv.firstChild);
+        }
+      }
+
+      ws.onopen = () => updateStatus(true);
+      ws.onclose = () => updateStatus(false);
+      ws.onmessage = (event) => addLogEntry(JSON.parse(event.data));
+    </script>
+  </body>
+</html>
