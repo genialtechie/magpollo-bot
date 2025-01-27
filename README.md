@@ -2,8 +2,8 @@
 
 ## TODO:
 
-- [] Figure out deployment strategy
-- [] build front end to show logs and other stuff
+- [x] Figure out deployment strategy
+- [x] build front end to show logs and other stuff
 - [] implement crypto watchlist
 - [] add twitter character and integration
 
@@ -13,15 +13,16 @@
 
 1. Create a Railway account
 2. Create a new project
-3. Add PostgreSQL plugin
-4. Configure environment variables:
+3. Deploy the 'pgvector' PostgreSQL template
+4. Deploy your project from dashboard using github
+5. Configure environment variables:
    ```
+   POSTGRES_URL=DATABASE_URL_FROM_RAILWAY //provided_by_railway
    DISCORD_TOKEN=your_token
    DISCORD_CLIENT_ID=your_client_id
    OPENROUTER_API_KEY=your_key
-   DATABASE_URL=provided_by_railway
+   SOME_API_KEY=your_key
    ```
-5. Connect your GitHub repository
 6. Deploy
 
 ## Run with Docker
@@ -35,6 +36,7 @@ services:
   eliza:
     environment:
       - OPENROUTER_API_KEY=blahdeeblahblahblah
+      - SOME_API_KEY=your_key
 ```
 
 #### Run the image
