@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Morty Logs</title>
+    <title>Magpollo Interface</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -14,33 +14,116 @@
               info: '#0000ff',
               debug: '#ff00ff',
               success: '#00ff00',
+              terminal: {
+                bg: '#1a1b26',
+                border: '#24283b',
+                text: '#a9b1d6',
+                highlight: '#7aa2f7',
+              },
             },
           },
         },
       };
     </script>
   </head>
-  <body class="bg-gray-900 text-gray-200 font-mono">
-    <header
-      class="border-b border-gray-700 p-4 flex justify-between items-center sticky top-0 bg-gray-900"
-    >
-      <h1 class="text-xl font-bold">ElizaOS Logs</h1>
-      <div
-        id="status"
-        class="px-3 py-1 rounded-full text-sm"
-      ></div>
-    </header>
+  <body class="bg-terminal-bg text-terminal-text font-mono">
+    <div class="h-screen flex">
+      <!-- Sidebar -->
+      <div class="w-48 border-r border-terminal-border">
+        <div class="p-4 border-b border-terminal-border">
+          <h1 class="text-xl font-bold">Magpollo</h1>
+        </div>
+        <nav class="p-4 space-y-2">
+          <button
+            id="logsBtn"
+            class="w-full text-left p-2 rounded hover:bg-terminal-border"
+          >
+            📋 Logs
+          </button>
+          <button
+            id="chatBtn"
+            class="w-full text-left p-2 rounded hover:bg-terminal-border"
+          >
+            💬 Chat
+          </button>
+        </nav>
+        <div class="p-4 border-t border-terminal-border">
+          <select
+            id="characterSelect"
+            class="w-full bg-terminal-bg text-terminal-text border border-terminal-border rounded p-2"
+          >
+            <option value="morty">Morty</option>
+            <option value="zach">Zach</option>
+          </select>
+        </div>
+      </div>
 
-    <div
-      id="logs"
-      class="p-4 h-[calc(100vh-4rem)] overflow-y-auto"
-    ></div>
+      <!-- Main Content -->
+      <div class="flex-1 flex flex-col">
+        <!-- Header -->
+        <header
+          class="border-b border-terminal-border p-4 flex justify-between items-center"
+        >
+          <div
+            id="currentView"
+            class="text-xl"
+          >
+            Logs
+          </div>
+          <div
+            id="status"
+            class="px-3 py-1 rounded-full text-sm"
+          ></div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-hidden">
+          <!-- Logs View -->
+          <div
+            id="logsView"
+            class="h-full"
+          >
+            <div
+              id="logs"
+              class="p-4 h-full overflow-y-auto"
+            ></div>
+          </div>
+
+          <!-- Chat View -->
+          <div
+            id="chatView"
+            class="h-full hidden flex flex-col"
+          >
+            <div
+              id="messages"
+              class="flex-1 p-4 overflow-y-auto"
+            ></div>
+            <div class="border-t border-terminal-border p-4">
+              <form
+                id="chatForm"
+                class="flex gap-2"
+              >
+                <input
+                  type="text"
+                  id="messageInput"
+                  class="flex-1 bg-terminal-bg border border-terminal-border rounded p-2 text-terminal-text"
+                  placeholder="Type your message..."
+                />
+                <button
+                  type="submit"
+                  class="px-4 py-2 bg-terminal-border rounded hover:bg-terminal-highlight/20"
+                >
+                  Send
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
-      const logsDiv = document.getElementById('logs');
-      const statusDiv = document.getElementById('status');
-
-      // Dynamic WebSocket URL based on environment
+      //  WebSocket setup for logs
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost =
         window.location.hostname === 'localhost'
@@ -49,12 +132,12 @@
       const ws = new WebSocket(`${wsProtocol}//${wsHost}`);
 
       const LOG_ICONS = {
-        LOG: '◎', // White circle
-        WARN: '⚠', // Warning
-        ERROR: '⛔', // No entry
-        INFO: 'ℹ', // Info
-        DEBUG: 'Ⱗ', // Debug
-        SUCCESS: '✓', // Check
+        LOG: '◎',
+        WARN: '⚠',
+        ERROR: '⛔',
+        INFO: 'ℹ',
+        DEBUG: 'Ⱗ',
+        SUCCESS: '✓',
       };
 
       const LOG_COLORS = {
@@ -66,7 +149,81 @@
         SUCCESS: 'text-success',
       };
 
+      // UI Elements
+      const logsBtn = document.getElementById('logsBtn');
+      const chatBtn = document.getElementById('chatBtn');
+      const logsView = document.getElementById('logsView');
+      const chatView = document.getElementById('chatView');
+      const currentView = document.getElementById('currentView');
+      const characterSelect = document.getElementById('characterSelect');
+      const chatForm = document.getElementById('chatForm');
+      const messageInput = document.getElementById('messageInput');
+      const messages = document.getElementById('messages');
+
+      // View switching
+      logsBtn.addEventListener('click', () => {
+        logsView.classList.remove('hidden');
+        chatView.classList.add('hidden');
+        currentView.textContent = 'Logs';
+      });
+
+      chatBtn.addEventListener('click', () => {
+        logsView.classList.add('hidden');
+        chatView.classList.remove('hidden');
+        currentView.textContent = 'Chat';
+      });
+
+      // Chat functionality
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        const character = characterSelect.value;
+
+        // Add user message to chat
+        addChatMessage('You', message);
+
+        try {
+          const response = await fetch(
+            `http://localhost:3000/${character}/message`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: message,
+                userId: 'user',
+                userName: 'User',
+              }),
+            }
+          );
+
+          const data = await response.json();
+          data.forEach((msg) => addChatMessage(character, msg.text));
+        } catch (error) {
+          console.error('Error:', error);
+          addChatMessage('System', 'Error sending message');
+        }
+
+        messageInput.value = '';
+      });
+
+      function addChatMessage(sender, text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'mb-4';
+        messageDiv.innerHTML = `
+          <div class="flex gap-2">
+            <span class="text-terminal-highlight">${sender}:</span>
+            <span>${text}</span>
+          </div>
+        `;
+        messages.appendChild(messageDiv);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      // Existing log functionality
       function updateStatus(connected) {
+        const statusDiv = document.getElementById('status');
         statusDiv.textContent = connected ? 'Connected' : 'Disconnected';
         statusDiv.className = connected
           ? 'px-3 py-1 rounded-full text-sm bg-green-900 text-green-300'
@@ -76,17 +233,17 @@
       function addLogEntry(log) {
         const entry = document.createElement('div');
         entry.className = 'py-1 flex gap-2 items-start';
-
         entry.innerHTML = `
-                <span class="text-gray-500">[${log.timestamp}]</span>
-                <span class="${LOG_COLORS[log.level] || 'text-white'}">${
+          <span class="text-gray-500">[${log.timestamp}]</span>
+          <span class="${LOG_COLORS[log.level] || 'text-white'}">${
           LOG_ICONS[log.level] || ''
         } ${log.level}:</span>
-                <span class="text-gray-300 whitespace-pre-wrap">${
-                  log.message
-                }</span>
-            `;
+          <span class="text-terminal-text whitespace-pre-wrap">${
+            log.message
+          }</span>
+        `;
 
+        const logsDiv = document.getElementById('logs');
         logsDiv.appendChild(entry);
         logsDiv.scrollTop = logsDiv.scrollHeight;
 
