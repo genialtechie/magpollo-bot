@@ -27,9 +27,20 @@
     </script>
   </head>
   <body class="bg-terminal-bg text-terminal-text font-mono">
-    <div class="h-screen flex">
+    <!-- Mobile Menu Button -->
+    <button
+      id="mobileMenuBtn"
+      class="lg:hidden fixed top-4 right-4 z-50 p-2 rounded hover:bg-terminal-border"
+    >
+      ☰
+    </button>
+
+    <div class="h-screen flex flex-col lg:flex-row">
       <!-- Sidebar -->
-      <div class="w-48 border-r border-terminal-border">
+      <div
+        id="sidebar"
+        class="hidden lg:block w-full lg:w-48 border-b lg:border-r lg:border-b-0 border-terminal-border"
+      >
         <div class="p-4 border-b border-terminal-border">
           <h1 class="text-xl font-bold">Magpollo</h1>
         </div>
@@ -96,7 +107,7 @@
           >
             <div
               id="messages"
-              class="flex-1 p-4 overflow-y-auto"
+              class="flex-1 p-4 overflow-y-auto space-y-4"
             ></div>
             <div class="border-t border-terminal-border p-4">
               <form
@@ -111,7 +122,8 @@
                 />
                 <button
                   type="submit"
-                  class="px-4 py-2 bg-terminal-border rounded hover:bg-terminal-highlight/20"
+                  id="sendButton"
+                  class="px-4 py-2 bg-terminal-border rounded hover:bg-terminal-highlight/20 min-w-[4rem] flex items-center justify-center"
                 >
                   Send
                 </button>
@@ -123,7 +135,26 @@
     </div>
 
     <script>
-      //  WebSocket setup for logs
+      // Mobile menu handling
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const sidebar = document.getElementById('sidebar');
+
+      mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('hidden');
+      });
+
+      // Hide sidebar on mobile when clicking outside
+      document.addEventListener('click', (e) => {
+        if (
+          window.innerWidth < 1024 &&
+          !sidebar.contains(e.target) &&
+          !mobileMenuBtn.contains(e.target)
+        ) {
+          sidebar.classList.add('hidden');
+        }
+      });
+
+      // Existing WebSocket setup
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost =
         window.location.hostname === 'localhost'
@@ -159,18 +190,21 @@
       const chatForm = document.getElementById('chatForm');
       const messageInput = document.getElementById('messageInput');
       const messages = document.getElementById('messages');
+      const sendButton = document.getElementById('sendButton');
 
       // View switching
       logsBtn.addEventListener('click', () => {
         logsView.classList.remove('hidden');
         chatView.classList.add('hidden');
         currentView.textContent = 'Logs';
+        if (window.innerWidth < 1024) sidebar.classList.add('hidden');
       });
 
       chatBtn.addEventListener('click', () => {
         logsView.classList.add('hidden');
         chatView.classList.remove('hidden');
         currentView.textContent = 'Chat';
+        if (window.innerWidth < 1024) sidebar.classList.add('hidden');
       });
 
       // Chat functionality
@@ -180,6 +214,12 @@
         if (!message) return;
 
         const character = characterSelect.value;
+
+        // Clear input and disable form immediately
+        messageInput.value = '';
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+        sendButton.textContent = '...';
 
         // Add user message to chat
         addChatMessage('You', message);
@@ -203,19 +243,21 @@
         } catch (error) {
           console.error('Error:', error);
           addChatMessage('System', 'Error sending message');
+        } finally {
+          // Re-enable form
+          messageInput.disabled = false;
+          sendButton.disabled = false;
+          sendButton.textContent = 'Send';
+          messageInput.focus();
         }
-
-        messageInput.value = '';
       });
 
       function addChatMessage(sender, text) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'mb-4';
+        messageDiv.className = 'flex gap-2 items-start';
         messageDiv.innerHTML = `
-          <div class="flex gap-2">
-            <span class="text-terminal-highlight">${sender}:</span>
-            <span>${text}</span>
-          </div>
+          <span class="text-terminal-highlight whitespace-nowrap">${sender}:</span>
+          <span class="break-words">${text}</span>
         `;
         messages.appendChild(messageDiv);
         messages.scrollTop = messages.scrollHeight;
