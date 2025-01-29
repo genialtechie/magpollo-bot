@@ -47,8 +47,11 @@ export function createAgent(
     'Creating runtime for character',
     character.name
   );
-
-  nodePlugin ??= createNodePlugin();
+  try {
+    nodePlugin ??= createNodePlugin();
+  } catch (error) {
+    elizaLogger.error('Error initializing plugins:', error);
+  }
 
   return new AgentRuntime({
     databaseAdapter: db,
@@ -163,7 +166,7 @@ const startAgents = async () => {
     let serverPort = parseInt(settings.SERVER_PORT || '3000');
     const args = parseArguments();
 
-    let charactersArg = args.characters || args.character;
+    let charactersArg = args.characters; //|| args.character;
     let characters = [character];
 
     if (charactersArg) {
